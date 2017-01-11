@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+
+body { font: 14px Arial;}
+
+path { 
+  stroke: steelblue;
+  stroke-width: 2;
+  fill: none;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: grey;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+div.tooltip { 
+    position: absolute;     
+    text-align: center;     
+    width: 60px;          
+    height: 28px;         
+    padding: 10px;       
+    font: 12px sans-serif;
+    font-weight: bold;    
+    background-color: rgba(255,255,255,1); 
+    border: 1px solid #ddd;
+
+    font-family: Arial;
+    font-size: 13px;   
+    
+    -moz-box-shadow: 4px 4px 12px rgba(0,0,0,.5);
+    -webkit-box-shadow: 4px 4px 12px rgba(0,0,0,.5);
+    box-shadow: 4px 4px 12px rgba(0,0,0,.5);
+
+    -moz-border-radius: 15px;
+    border-radius: 15px; 
+  
+    pointer-events: none;     
+}
+
+ .rightcorner{
+   position:absolute;
+   top:0;
+   right:0;
+  }
+
+  .leftcorner{
+   position:absolute;
+   top:0;
+   left:0;
+  }
+
+
+</style>
+  </head>
+  <body>
+    <a href="https://shijithpk.github.io/d3_fuel/animation_01_v2.html"><img class="leftcorner" src='https://raw.githubusercontent.com/shijithpk/d3_fuel/master/thin-gray-back-button-th.png' /></a>
+    <p style="width:600px;text-align:center;font-weight:bold;font-size:20px;">We're producing more crude oil </br>than we're consuming</p>
+    <a href="https://shijithpk.github.io/d3_fuel/animation_03a_v2.html"><img class="rightcorner" src='https://raw.githubusercontent.com/shijithpk/d3_fuel/master/thin-gray-next-button-th.png' /></a>
+    <p style="text-align:left;width:600px;">This graph looks at the production and consumption of crude oil around the world from January 2013 to December 2016.</p><br\>
+    <p style="text-align:left;width:600px;">In Q1 2014 (January-March 2014), global crude oil production was 91.93 million barrels/day outstripping consumption at 91.91 million barrels/day. This oversupply continued for the next seven quarters and is largely <a href="http://www.telegraph.co.uk/finance/oilprices/11993687/There-are-now-more-than-3bn-barrels-of-excess-oil-in-the-world.html">behind the drop</a> in crude oil prices.</p><br\>
+    <p style="text-align:left;width:600px;">(Hover over the points for more info.)</p>
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script>
+      var margin = {top: 20, right:65, bottom: 60, left: 40},
+          width  = 600 - margin.left - margin.right,
+          height = 400  - margin.top  - margin.bottom ;
+
+      var x = d3.scale.ordinal()
+          .rangeRoundBands([0, width], .1);
+
+      var y = d3.scale.linear()
+          .rangeRound([height, 0]);
+
+      var xAxis = d3.svg.axis().scale(x)
+                    .orient("bottom").ticks([4]);
+
+      var yAxis = d3.svg.axis().scale(y)
+                    .orient("left").ticks(3);
+
+      var line = d3.svg.line()
+          .interpolate("linear")
+          .x(function (d) { return x(d.label) + x.rangeBand() / 2; })
+          .y(function (d) { return y(d.value); });
+
+      var color = d3.scale.ordinal()
+          .range(["#ff7f0e","#2ca02c"]);
+
+      var svg = d3.select("body").append("svg")
+          .attr("width",  width  + margin.left + margin.right)
+          .attr("height", height + margin.top  + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      d3.csv("https://raw.githubusercontent.com/shijithpk/d3_fuel/master/tab2.csv", function (error, data) {
+        console.log("Inital Data", data);
+
+        var labelVar = 'quarter';
+        var varNames = d3.keys(data[0])
+            .filter(function (key) { return key !== labelVar;});
+
+        color.domain(varNames);
+
+        var seriesData = varNames.map(function (name) {
+          return {
+            name: name,
+            values: data.map(function (d) {
+              return {name: name, label: d[labelVar], value: +d[name]};
+            })
+          };
+        });
+        console.log("seriesData", seriesData);
+
+        x.domain(data.map(function (d) { return d.quarter; }));
+        y.domain([89,98.2]);
+
+        var series = svg.selectAll(".series")
+            .data(seriesData)
+            .enter().append("g")
+            .attr("class", "series");
+
+        series.append("path")
+          .attr("class", "line")
+          .attr("d", function (d) { return line(d.values); })
+          .style("stroke", function (d) { return color(d.name); })
+          .style("stroke-width", "4px")
+          .style("fill", "none")
+          .attr("display", "none")
+          .transition()
+          .delay(function(d, i) { return i * 2000; })
+          .duration(1950)
+          .ease("linear")
+          .attrTween("stroke-dasharray", animateLine)
+          .attr("display", 1);
+
+        function animateLine() {
+            var l = this.getTotalLength();
+            i = d3.interpolateString("0," + l, l + "," + l);
+            return function(t) { return i(t); };
+        };
+
+      
+        svg.append("g")     // Add the X Axis
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + height + ")")
+          .call(xAxis)
+          .selectAll("text")  
+            .style("text-anchor", "end")
+            .attr("dx", "0em")
+            .attr("dy", "1em")
+            .attr("transform", function(d) {
+                return "rotate(-30)" 
+                });
+
+        svg.append("g")     // Add the Y Axis
+          .attr("class", "y axis")
+          .call(yAxis);
+
+        svg.append("text")
+          .attr("transform", "translate(" + (width-20) + "," + y(data[data.length-1].world_prod) + ")")
+          .attr("dy", "-20")
+          .attr("text-anchor", "start")
+          .style("fill", "#ff7f0e")
+          .text("Production");
+
+        svg.append("text")
+          .attr("transform", "translate(" + (width-20) + "," + y(data[data.length-1].world_consum) + ")")
+          .attr("dy", "20")
+          .attr("dx", "0")
+          .attr("text-anchor", "start")
+          .style("fill", "#2ca02c")
+          .text("Consumption");
+
+        svg.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 20)
+          .attr("x", -140)
+          .attr("fill", "#000")
+          .text("Million Barrels A Day");
+
+        var div = d3.select("body").append("div") 
+          .attr("class", "tooltip")       
+          .style("opacity", 0);
+
+       series.selectAll("circle")  
+          .data(function(d){return d.values})
+          .enter()
+          .append("circle")
+          //.delay(function(d, i) { return i * 2000; })
+          //.duration(1950) 
+          //.ease("linear")
+          .attr("r", 7)   
+          .attr("cx", function(d) { return x(d.label) + x.rangeBand() / 2; })
+          .attr("cy", function(d) { return y(d.value); })   
+          .style("fill", function (d) { return color(d.name); })
+          .style("stroke", function (d) { return color(d.name); })
+          .on("mouseover", function(d) {    
+              div.transition()    
+                  .duration(200)    
+                  .style("opacity", .9);    
+              div .html(d.label + "<br/>"  + d.value)  
+                  .style("left", (d3.event.pageX) + "px")   
+                  .style("top", (d3.event.pageY - 28) + "px")  
+              })          
+          .on("mouseout", function(d) {   
+              div.transition()    
+                  .duration(500)    
+                  .style("opacity", 0); 
+          });
+
+      });
+    </script>
+  </body>
+</html>
